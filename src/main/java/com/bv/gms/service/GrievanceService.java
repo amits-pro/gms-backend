@@ -2,16 +2,22 @@ package com.bv.gms.service;
 
 import java.io.Console;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.bv.gms.dto.DashboardDto;
 import com.bv.gms.dto.GrievanceAssignDto;
 import com.bv.gms.dto.GrievanceDto;
 import com.bv.gms.dto.GrievanceHistoryDto;
 import com.bv.gms.dto.GrievanceUpdateDto;
+import com.bv.gms.dto.NameValue;
 import com.bv.gms.entities.Grievance;
 import com.bv.gms.entities.GrievanceHistory;
 import com.bv.gms.entities.User;
@@ -19,6 +25,7 @@ import com.bv.gms.exceptions.BusinessException;
 import com.bv.gms.repositories.GrievanceHistoryRepository;
 import com.bv.gms.repositories.GrievanceRepository;
 import com.bv.gms.repositories.UserRepository;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 
 import jakarta.transaction.Transactional;
 
@@ -88,6 +95,187 @@ public class GrievanceService {
 			return grievanceRepository.findAll();
 		}
     }
+	
+	public DashboardDto getReportsData(String from, String to, Long userId) {
+		
+		DashboardDto dto = new DashboardDto();
+
+		User user = userRepository.findById(userId).get();
+		String role = user.getRole();
+		String department = user.getDepartment();
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+		LocalDate fromDate = LocalDate.parse(from,formatter);
+		LocalDate toDate = LocalDate.parse(to,formatter);
+
+		List<Object[]> reportsData = null;
+
+		if(role.equals("Grievance Controller")) {
+			reportsData = grievanceRepository.findGrievancesDataInDateRange(fromDate, toDate);
+			dto.setDashboardTitle("Grievance Controller Dashboard");
+		} else if(role.equals("Grievance Supervisor") || role.equals("Grievance Officer") ) {
+			reportsData = grievanceRepository.findGrievancesDataInDateRangeByDepartment(fromDate, toDate, user.getDepartment());
+			dto.setDashboardTitle(department + " Grievance Dashboard");
+		}
+		initializeGrievanceCount(dto);
+		
+		Map<LocalDate, Integer> grievanceByDateMap = new TreeMap<LocalDate, Integer>();
+		Map<String, Integer> grievanceByDeparmentMap = new TreeMap<String, Integer>();
+		Map<String, Integer> grievanceByStatusMap = new TreeMap<String, Integer>();
+		
+		for (Object[] data: reportsData) {
+
+			LocalDate date = LocalDate.parse(data[0].toString(),formatter);
+			int dateCount = Integer.parseInt(data[1].toString());
+			String grievanceType = data[2].toString();
+			String grievanceStatus = data[3].toString();
+
+			if(!grievanceByDateMap.containsKey(date)) {
+				grievanceByDateMap.put(date, dateCount);
+			} else {
+				int updatedCount = grievanceByDateMap.get(date) + dateCount;
+				grievanceByDateMap.put(date, updatedCount);
+			}
+
+			if(!grievanceByDeparmentMap.containsKey(grievanceType)) {
+				grievanceByDeparmentMap.put(grievanceType, dateCount);
+			} else {
+				int updatedCount = grievanceByDeparmentMap.get(grievanceType) + dateCount;
+				grievanceByDeparmentMap.put(grievanceType, updatedCount);
+			}
+			if(!grievanceByStatusMap.containsKey(grievanceStatus)) {
+				grievanceByStatusMap.put(grievanceStatus, dateCount);
+			} else {
+				int updatedCount = grievanceByStatusMap.get(grievanceStatus) + dateCount;
+				grievanceByStatusMap.put(grievanceStatus, updatedCount);
+			}
+			
+			List<NameValue>  grievanceByDateList = grievanceByDateMap.entrySet()
+				    .stream()
+				    .map(entry -> new NameValue(entry.getKey().toString(), entry.getValue().toString()))
+				    .toList(); 
+			
+			dto.setGrievancesInDateRange(grievanceByDateList);
+			
+			
+			List<NameValue>  grievanceByDeparmentList = grievanceByDeparmentMap.entrySet()
+				    .stream()
+				    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
+				    .toList(); 
+			
+			dto.setGrievancesByDepartmentInDateRange(grievanceByDeparmentList);
+			
+			List<NameValue>  grievanceByStatusList = grievanceByStatusMap.entrySet()
+				    .stream()
+				    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
+				    .toList(); 
+			
+			dto.setGrievancesByStatusInDateRange(grievanceByStatusList);
+			
+		}
+		List<Object[]> overAllData = null;
+		
+		if(role.equals("Grievance Controller")) {
+			overAllData = grievanceRepository.findOverallGrievancesData();
+		} else if(role.equals("Grievance Supervisor") || role.equals("Grievance Officer") ) {
+			overAllData = grievanceRepository.findOverallGrievancesDataByDepartment(user.getDepartment());
+		}
+
+		Map<LocalDate, Integer> overallGrievanceByDateMap = new TreeMap<LocalDate, Integer>();
+		Map<String, Integer> overallGrievanceByDeparmentMap = new TreeMap<String, Integer>();
+		Map<String, Integer> overallGrievanceByStatusMap = new TreeMap<String, Integer>();
+		List<NameValue> grievanceByStatusList = new ArrayList<NameValue>();
+		int overAllCount = 0;
+		
+		for (Object[] data: overAllData) {
+
+			LocalDate date = LocalDate.parse(data[0].toString(),formatter);
+			Integer dateCount = Integer.parseInt(data[1].toString());
+			String grievanceType = data[2].toString();
+			String grievanceStatus = data[3].toString();
+			
+			overAllCount += dateCount;
+						
+			if(!overallGrievanceByDateMap.containsKey(date)) {
+				overallGrievanceByDateMap.put(date, dateCount);
+			} else {
+				int updatedCount = overallGrievanceByDateMap.get(date) + dateCount;
+				overallGrievanceByDateMap.put(date, updatedCount);
+			}
+
+			if(!overallGrievanceByDeparmentMap.containsKey(grievanceType)) {
+				overallGrievanceByDeparmentMap.put(grievanceType, dateCount);
+			} else {
+				int updatedCount = overallGrievanceByDeparmentMap.get(grievanceType) + dateCount;
+				overallGrievanceByDeparmentMap.put(grievanceType, updatedCount);
+			}
+			if(!overallGrievanceByStatusMap.containsKey(grievanceStatus)) {
+				overallGrievanceByStatusMap.put(grievanceStatus, dateCount);
+			} else {
+				int updatedCount = overallGrievanceByStatusMap.get(grievanceStatus) + dateCount;
+				overallGrievanceByStatusMap.put(grievanceStatus, updatedCount);
+			}
+			
+			List<NameValue>  grievanceByDateList = overallGrievanceByDateMap.entrySet()
+				    .stream()
+				    .map(entry -> new NameValue(entry.getKey().toString(), entry.getValue().toString()))
+				    .toList(); 
+			
+			dto.setOverallGrievancesByDate(grievanceByDateList);
+			
+			
+			List<NameValue>  grievanceByDeparmentList = overallGrievanceByDeparmentMap.entrySet()
+				    .stream()
+				    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
+				    .toList(); 
+			
+			dto.setOverallGrievancesByDepartments(grievanceByDeparmentList);
+			
+			grievanceByStatusList = overallGrievanceByStatusMap.entrySet()
+				    .stream()
+				    .map(entry -> {
+				        NameValue nameValue = new NameValue(entry.getKey(), entry.getValue().toString());
+				        return nameValue;
+				    })
+				    .toList();
+
+			
+			dto.setOverallGrievancesByStatus(grievanceByStatusList);			
+		}
+		dto.setOverAllGrievanceCount(overAllCount);
+		setGrievanceCount(dto, grievanceByStatusList);
+		return dto;
+	}
+	private void setGrievanceCount(DashboardDto dto, List<NameValue> grievanceByStatus) {
+		
+		for(NameValue nv: grievanceByStatus) {
+			switch(nv.getName()) {
+			case "New":
+				dto.setNewGrievanceCount(Integer.parseInt(nv.getValue()));
+				break;
+			case "Assigned":
+				dto.setAssignedGrievanceCount(Integer.parseInt(nv.getValue()));
+				break;
+			case "In Progress":
+				dto.setInProgessGrievanceCount(Integer.parseInt(nv.getValue()));
+				break;
+			case "Declined":
+				dto.setDeclinedGrievanceCount(Integer.parseInt(nv.getValue()));
+				break;
+			case "Resolved":
+				dto.setResolvedGrievanceCount(Integer.parseInt(nv.getValue()));
+				break;
+		
+			}
+		}
+	}
+	private void initializeGrievanceCount(DashboardDto dto) {
+		
+		dto.setNewGrievanceCount(0);
+		dto.setAssignedGrievanceCount(0);
+		dto.setInProgessGrievanceCount(0);
+		dto.setDeclinedGrievanceCount(0);
+		dto.setResolvedGrievanceCount(0);
+	}
 	
 	public List<Grievance> getByUserId(Long userId) {
 		User user = userRepository.findById(userId).get();

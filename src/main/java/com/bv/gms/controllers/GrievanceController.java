@@ -1,10 +1,12 @@
  package com.bv.gms.controllers;
- import java.util.List;
+ import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity; 
  import org.springframework.web.bind.annotation.*;
 
+import com.bv.gms.dto.DashboardDto;
 import com.bv.gms.dto.GrievanceAssignDto;
 import com.bv.gms.dto.GrievanceDto;
 import com.bv.gms.dto.GrievanceHistoryDto;
@@ -57,7 +59,19 @@ public class GrievanceController {
 	 @GetMapping("/grievance-officers") 
 	 public ResponseEntity<List<GrievanceOfficerDto>> getOfficers(@RequestParam String grievanceType) 
 	 {
-		 return ResponseEntity.ok(userService.findOfficersByGrievanceType(grievanceType));
+		 return ResponseEntity.ok(userService.findOfficersByGrievanceType("Grievance Officer", grievanceType));
+	 }
+	 
+	 @GetMapping("/grievance-supervisors") 
+	 public ResponseEntity<List<GrievanceOfficerDto>> getSupervisors(@RequestParam String grievanceType) 
+	 {
+		 return ResponseEntity.ok(userService.findOfficersByGrievanceType("Grievance Supervisor", grievanceType));
+	 }
+	 
+	 @GetMapping("/grievance-report") 
+	 public ResponseEntity<DashboardDto> getReport(@RequestParam String fromDate, @RequestParam String toDate, @RequestParam Long userId) 
+	 {
+		 return ResponseEntity.ok(grievanceService.getReportsData(fromDate,toDate, userId));
 	 }
 }
 				 

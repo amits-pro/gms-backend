@@ -50,6 +50,12 @@ public class UserController {
     public ResponseEntity<UserProfileDto> updateProfile(@RequestBody UpdateUserProfileDto dto) throws Exception {
         return ResponseEntity.ok(userService.updateProfile(dto));
     }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<UserProfileDto>> all(@RequestParam Long userId) throws Exception {
+        return ResponseEntity.ok(userService.getAllUsers(userId));
+    }
+
     
     @GetMapping("/user-profile")
     public ResponseEntity<UserProfileDto> getUserProfile(@RequestParam Long userId) throws Exception {
@@ -58,7 +64,13 @@ public class UserController {
     
     @GetMapping("/grievances")
     public ResponseEntity<List<GrievanceResponseDto>> getgrievances(@RequestParam Long userId) throws Exception {
-        return ResponseEntity.ok(userService.getAll(userId));
+        return ResponseEntity.ok(userService.getAllGrievances(userId));
     	
+    }
+    
+    @DeleteMapping("/users")
+    public ResponseEntity<Void> delete(@RequestParam Long userId) throws Exception {
+    	userService.deleteUser(userId);
+    	return ResponseEntity.ok().build();
     }
 }

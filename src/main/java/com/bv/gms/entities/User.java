@@ -68,6 +68,10 @@ public class User implements UserDetails{
     @JsonManagedReference  // Manages serialization
     private List<Grievance> grievancess; 
    
+    
+    @Column(columnDefinition = "TINYINT(1) DEFAULT 1", nullable = false)
+    private boolean isActive = true; // Set default to true in the Java entity
+    
 	/*
 	 * @Column(name="department_name")
 	 * 
@@ -150,6 +154,13 @@ public class User implements UserDetails{
 	}
 	public void setDepartment(String department) {
 		this.department = department;
+	}
+	
+	public boolean getIsActive() {
+		return isActive;
+	}
+	public void setIsActive(boolean isActive) {
+		this.isActive = isActive;
 	}
 	
 	public List<Grievance> getGrievances() {

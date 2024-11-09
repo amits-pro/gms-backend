@@ -58,11 +58,26 @@ public class UserService {
     }
     
     public UserProfileDto updateProfile(UpdateUserProfileDto dto) {
-        User user = userRepository.findById(dto.getUserId()).get();
-        user.setEmail(dto.getEmail());
-        user.setPhone(dto.getPhone());
-    	user = userRepository.save(user);
-        return populateProfile(user);
+        User dbUser = userRepository.findById(dto.getId()).get();
+        dbUser.setEmail(dto.getEmail());
+        dbUser.setPhone(dto.getPhone());
+    	User updated = userRepository.save(dbUser);
+        System.out.println(updated);
+    	return populateProfile(updated);
+    }
+    
+    public List<UserProfileDto> getAllUsers(Long userId) {
+        User user = userRepository.findById(userId).get();
+        List<UserProfileDto> userDtos = new ArrayList<UserProfileDto>();
+        if(user.getRole().equals("Admin")) {
+        	List<User> users =userRepository.getAllActiveUsers(true);	
+            for(User u: users) {
+            	if(!u.getRole().equals("System Admin")) {
+                	userDtos.add(populateProfile(u));
+            	}
+            }
+        }
+        return userDtos;
     }
 
 
@@ -70,31 +85,37 @@ public class UserService {
         return userRepository.findById(id);
     }
     
-    public List<GrievanceOfficerDto> findOfficersByGrievanceType(String grievanceType) {
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id).get();
+        user.setIsActive(false);
+        userRepository.save(user);
+    }
+    
+    public List<GrievanceOfficerDto> findOfficersByGrievanceType(String officerType, String grievanceType) {
     	// Define a predicate to filter even numbers
         List<User> officers = userRepository.getUserMappedToGrievanceType(grievanceType);
         List<GrievanceOfficerDto> dtos = new ArrayList<GrievanceOfficerDto>();
         for(User u: officers) {
-        	dtos.add(populateOfficer(u));
+        	if(u.getRole().equals(officerType)) {
+            	dtos.add(populateOfficer(u));
+        	}
         }
         return dtos;
     }
     
     public String authenticateAndGenerateToken(LoginDto loginDto) throws Exception {
         
-    	System.out.println("user controlller");
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDto.getUserId(), loginDto.getPassword())
         );
         // Load the user
         UserDetails userDetails = userDetailsService.loadUserByUsername(loginDto.getUserId());
-        System.out.println("user details");
         // Generate the JWT token
         return jwtUtil.generateToken(userDetails);
     }
 
     
-    public List<GrievanceResponseDto> getAll(Long userId) {
+    public List<GrievanceResponseDto> getAllGrievances(Long userId) {
 		
 		User user = userRepository.findById(userId).get();
 		List<GrievanceResponseDto> dtos = new ArrayList<GrievanceResponseDto>();
@@ -105,6 +126,8 @@ public class UserService {
 				grievances = grievanceRepository.findAll();
 				break;
 			case "Grievance Officer":
+				grievances = grievanceRepository.findGrievancesByGrievanceType(user.getDepartment());
+				break;
 			case "Grievance Supervisor":
 				grievances = grievanceRepository.getAssignedToUserId(userId);
 				break;
@@ -146,17 +169,21 @@ public class UserService {
 	}
 	private UserProfileDto populateProfile(User user) {
 		UserProfileDto dto = new UserProfileDto();
+		dto.setId(user.getId());
 		dto.setEmail(user.getEmail());
 		dto.setPhone(user.getPhone());
 		dto.setFirstName(user.getFirstName());
 		dto.setLastName(user.getLastName());
+		dto.setName(user.getFirstName() + " " + user.getLastName());
 		dto.setRole(user.getRole());
 		dto.setUserId(user.getUserId());
+		dto.setDepartment(user.getDepartment());
 		return dto;
 	}
 	
+	
+	
 	private User populateUser(UserRegistrationDto dto) {
-		System.out.println(dto);
 		User user = new User();
 		user.setUserId(dto.getUserId());
 		user.setFirstName(dto.getFirstName());

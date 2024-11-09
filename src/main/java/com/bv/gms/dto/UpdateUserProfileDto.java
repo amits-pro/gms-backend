@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 public class UpdateUserProfileDto {
 
 	@NotBlank(message = "Email cannot be blank")
-    private Long userId;
+    private Long id;
 
 	@NotBlank(message = "Email cannot be blank")
     private String email;
@@ -15,12 +15,12 @@ public class UpdateUserProfileDto {
     @Size(min=10,max=10,message="Phone No must be of 10 digits")
     private String phone;
     
-    public Long getUserId() {
-		return userId;
+    public Long getId() {
+		return id;
 	}
 
-	public void setUserId(Long userId) {
-		this.userId = userId;
+	public void setId(Long id) {
+		this.id = id;
 	}
 
     

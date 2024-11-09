@@ -16,6 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT e FROM User e WHERE e.userId = :userId")
     Optional<User> findByUserId(String userId);
 
+    @Query("SELECT e FROM User e WHERE e.isActive = :isActive")
+    List<User> getAllActiveUsers(boolean isActive);
+
     @Query("SELECT e FROM User e WHERE e.department = :grievanceType")
     List<User> getUserMappedToGrievanceType(String grievanceType);
 
