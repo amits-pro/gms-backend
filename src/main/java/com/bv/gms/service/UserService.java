@@ -174,7 +174,7 @@ public class UserService {
 		dto.setPhone(user.getPhone());
 		dto.setFirstName(user.getFirstName());
 		dto.setLastName(user.getLastName());
-		dto.setName(user.getFirstName() + " " + user.getLastName());
+		dto.setName(user.getSalutation() + " " + user.getFirstName() + " " + user.getLastName());
 		dto.setRole(user.getRole());
 		dto.setUserId(user.getUserId());
 		dto.setDepartment(user.getDepartment());
@@ -192,6 +192,7 @@ public class UserService {
 		user.setPhone(dto.getPhone());
 		user.setRole(dto.getRole());
 		user.setDepartment(dto.getDepartment());
+		user.setSalutation(dto.getSalutation());
 		user.setPassword(passwordEncoder.encode(dto.getPassword()));
 		return user;
 	}

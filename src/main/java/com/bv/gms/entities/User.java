@@ -21,7 +21,6 @@ import jakarta.validation.constraints.NotBlank;
 @Entity
 @Table(name = "users")
 public class User implements UserDetails{
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,10 +29,15 @@ public class User implements UserDetails{
     @NotBlank(message = "User Id is mandatory")
     private String userId;
     
+    @Column(name="salutation")
+    @NotBlank(message="Salutation is mandatory")
+    private String salutation;
     
     @Column(name="first_name")
     @NotBlank(message = "First name is mandatory")
     private String firstName;
+    
+
 
 
     @Column(name="last_name")
@@ -86,11 +90,12 @@ public class User implements UserDetails{
 		super();
 		this.id = id;
 	}
-	public User(Long id, String userId, String firstName, String lastName, String email, String phone,
+	public User(Long id, String userId,String salutation, String firstName,String lastName, String email, String phone,
 			String password, String role, String department) {
 		super();
 		this.id = id;
 		this.userId = userId;
+		this.salutation=salutation;
 		this.firstName = firstName;
 		this.lastName = lastName;
 		this.email = email;
@@ -117,7 +122,16 @@ public class User implements UserDetails{
 	}
 	public void setFirstName(String firstName) {
 		this.firstName = firstName;
+		}
+		
+	public String getSalutation() {
+		return salutation;
 	}
+
+	public void setSalutation(String salutation) {
+		this.salutation = salutation;
+	}
+
 	public String getLastName() {
 		return lastName;
 	}
@@ -174,7 +188,7 @@ public class User implements UserDetails{
 	 */
 	@Override
 	public String toString() {
-		return "User [id=" + id + ", userId=" + userId + ", firstName=" + firstName + ", lastName=" + lastName
+		return "User [id=" + id + ", userId=" + userId + ",saluation="+salutation+", firstName=" + firstName + ", lastName=" + lastName
 				+ ", email=" + email + ", phone=" + phone  + ", password=" + password
 				+ ", role=" + role  + ", department=" + department  +"]";
 	}

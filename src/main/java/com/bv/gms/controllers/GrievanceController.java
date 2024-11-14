@@ -11,6 +11,7 @@ import com.bv.gms.dto.GrievanceAssignDto;
 import com.bv.gms.dto.GrievanceDto;
 import com.bv.gms.dto.GrievanceHistoryDto;
 import com.bv.gms.dto.GrievanceOfficerDto;
+import com.bv.gms.dto.GrievanceStatusDto;
 import com.bv.gms.dto.GrievanceUpdateDto;
 import com.bv.gms.entities.Grievance;
 import com.bv.gms.entities.User;
@@ -71,7 +72,13 @@ public class GrievanceController {
 	 @GetMapping("/grievance-report") 
 	 public ResponseEntity<DashboardDto> getReport(@RequestParam String fromDate, @RequestParam String toDate, @RequestParam Long userId) 
 	 {
-		 return ResponseEntity.ok(grievanceService.getReportsData(fromDate,toDate, userId));
+		 return ResponseEntity.ok(grievanceService.getOfficersDashBoardData(fromDate,toDate, userId));
+	 }
+	 
+	 @GetMapping("/user-grievance-with-status") 
+	 public ResponseEntity<GrievanceStatusDto> getUserGrievanceStatus(@RequestParam Long userId) 
+	 {
+		 return ResponseEntity.ok(grievanceService.getUsersDashBoardData(userId));
 	 }
 }
 				 

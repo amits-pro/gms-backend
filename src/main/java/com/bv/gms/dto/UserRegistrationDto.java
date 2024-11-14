@@ -8,6 +8,11 @@ import jakarta.validation.constraints.Size;
 
 public class UserRegistrationDto {  
   
+
+  @NotBlank(message="Salutation is mandatory")
+  private String salutation;
+
+	
   @NotBlank(message="First Name is mandatory")
   private String firstName;
   
@@ -106,10 +111,20 @@ public class UserRegistrationDto {
 	public String getDepartment() {
 		return department;
 	}
-	
-	public void setdepartment(String department) {
+
+	public String getSalutation() {
+		return salutation;
+	}
+
+	public void setSalutation(String salutation) {
+		this.salutation = salutation;
+	}
+
+	public void setDepartment(String department) {
 		this.department = department;
 	}
+	
+	
 
 	
 }

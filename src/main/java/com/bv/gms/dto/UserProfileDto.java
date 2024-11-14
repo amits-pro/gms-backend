@@ -17,6 +17,9 @@ public class UserProfileDto {
     private String userId;
     
     @NotBlank
+    private String salutation;
+    
+    @NotBlank
     private String firstName;
 
     @NotBlank
@@ -40,6 +43,12 @@ public class UserProfileDto {
 
     
     
+	public String getSalutation() {
+		return salutation;
+	}
+	public void setSalutation(String salutation) {
+		this.salutation = salutation;
+	}
 	public String getFirstName() {
 		return firstName;
 	}
@@ -96,11 +105,10 @@ public class UserProfileDto {
 	public void setDepartment(String department) {
 		this.department = department;
 	}
-
 	@Override
 	public String toString() {
-		return "User [id=" + id + ", userId=" + userId + ", name=" + name 
-				+ ", email=" + email + ", phone=" + phone  + ", role=" + role  + ", department=" + department  + "]";
+		return "UserProfileDto [id=" + id + ", userId=" + userId + ", salutation=" + salutation + ", firstName="
+				+ firstName + ", lastName=" + lastName + ", name=" + name + ", email=" + email + ", phone=" + phone
+				+ ", role=" + role + ", department=" + department + "]";
 	}
-	
 }

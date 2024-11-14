@@ -16,6 +16,8 @@ import com.bv.gms.dto.DashboardDto;
 import com.bv.gms.dto.GrievanceAssignDto;
 import com.bv.gms.dto.GrievanceDto;
 import com.bv.gms.dto.GrievanceHistoryDto;
+import com.bv.gms.dto.GrievanceResponseDto;
+import com.bv.gms.dto.GrievanceStatusDto;
 import com.bv.gms.dto.GrievanceUpdateDto;
 import com.bv.gms.dto.NameValue;
 import com.bv.gms.entities.Grievance;
@@ -84,7 +86,6 @@ public class GrievanceService {
 		}
 		return dtoList;
 	}
-	
 	public List<Grievance> getAll(Long userId) {
 		
 		User user = userRepository.findById(userId).get();
@@ -96,9 +97,87 @@ public class GrievanceService {
 		}
     }
 	
-	public DashboardDto getReportsData(String from, String to, Long userId) {
-		
+	
+	public DashboardDto getOfficersDashBoardData(String from, String to, Long userId ) {
+
+		User user = userRepository.findById(userId).get();
 		DashboardDto dto = new DashboardDto();
+		List<Object[]> overAllData = getOverAllData(userId,  user.getRole());
+		List<Object[]> dateRangeData = getDateRangeData(userId,  from, to, user.getRole());
+		setReportsData(userId, dto, overAllData, false);
+		setReportsData(userId, dto, dateRangeData, true);
+		
+		if(user.getRole().equals("Grievance Controller")) {
+			dto.setDashboardTitle("Grievance Controller Dashboard");
+		} else {
+			dto.setDashboardTitle(user.getDepartment() + " Grievance Dashboard");
+		}
+		
+		return dto;
+	}
+	
+	
+	public GrievanceStatusDto getUsersDashBoardData(Long userId) {
+		
+		GrievanceStatusDto statusDto = new GrievanceStatusDto();
+
+		List<Grievance> grievances = grievanceRepository.getByUserId(userId);
+		List<GrievanceResponseDto> grievanceReponseDtos = new ArrayList<GrievanceResponseDto>(); 
+		for(Grievance g: grievances) {
+			grievanceReponseDtos.add(getGrievanceDto(g));
+		}
+		statusDto.setGrievances(grievanceReponseDtos);
+		
+		
+		DashboardDto dashBoardDto = new DashboardDto();
+		statusDto.setDashboard(dashBoardDto);
+		List<Object[]> reportsData = getOverAllData(userId, "grievance-user");
+		setReportsData(userId, dashBoardDto, reportsData, false);
+
+		return statusDto;
+	}
+	
+	private GrievanceResponseDto getGrievanceDto(Grievance g) {
+		GrievanceResponseDto dto = new GrievanceResponseDto();
+		dto.setId(g.getId());
+		dto.setRaisedOn(g.getRaisedOn());
+		dto.setRaisedBy(g.getRaisedBy().getFirstName() + " " + g.getRaisedBy().getLastName()  );
+		dto.setTitle(g.getTitle());
+		dto.setDescription(g.getDescription());
+		dto.setPriority(g.getPriority());	
+		dto.setGrievanceType(g.getGrievanceType());
+		dto.setStatus(g.getStatus());
+		dto.setRemarks(g.getRemarks());		
+		if(g.getAssignedTo() != null) {
+			dto.setAssignedTo(g.getAssignedTo().getId());		
+			dto.setAssignedUser(g.getAssignedTo().getFirstName() + " " + g.getAssignedTo().getLastName());
+			dto.setAssignedUserRole(g.getAssignedTo().getRole());
+		}
+		return dto;
+	}
+	
+	private List<Object[]> getOverAllData(Long userId, String userType) {
+
+		User user = userRepository.findById(userId).get();
+		List<Object[]> reportsData = null;
+		switch(userType ) {
+		case "grievance-user":
+			reportsData = grievanceRepository.findOverallGrievancesDataForUser(userId);
+			break;
+		case "Grievance Controller":
+			reportsData = grievanceRepository.findOverallGrievancesData();
+			break;
+		case "Grievance Supervisor":
+			reportsData = grievanceRepository.findOverallGrievancesDataByDepartment(user.getDepartment());
+			break;
+		case "Grievance Officer":
+			reportsData = grievanceRepository.findOverallGrievancesDataByDepartment(user.getDepartment());
+			break;
+		}
+		return reportsData;
+	}
+	
+	private List<Object[]> getDateRangeData(Long userId, String from, String to, String userType) {
 
 		User user = userRepository.findById(userId).get();
 		String role = user.getRole();
@@ -106,29 +185,41 @@ public class GrievanceService {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 		LocalDate fromDate = LocalDate.parse(from,formatter);
 		LocalDate toDate = LocalDate.parse(to,formatter);
-
 		List<Object[]> reportsData = null;
 
-		if(role.equals("Grievance Controller")) {
+		switch(userType ) {
+		case "grievance-user":
+			break;
+		case "Grievance Controller":
 			reportsData = grievanceRepository.findGrievancesDataInDateRange(fromDate, toDate);
-			dto.setDashboardTitle("Grievance Controller Dashboard");
-		} else if(role.equals("Grievance Supervisor") || role.equals("Grievance Officer") ) {
+			break;
+		case "Grievance Supervisor":
 			reportsData = grievanceRepository.findGrievancesDataInDateRangeByDepartment(fromDate, toDate, user.getDepartment());
-			dto.setDashboardTitle(department + " Grievance Dashboard");
+			break;
+		case "Grievance Officer":
+			reportsData = grievanceRepository.findGrievancesDataInDateRangeByDepartment(fromDate, toDate, user.getDepartment());
+			break;
 		}
-		initializeGrievanceCount(dto);
+		return reportsData;
+	}
+	
+	private void setReportsData(Long userId, DashboardDto dto, List<Object[]> dashboardData, Boolean dataInDateRange) {
 		
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 		Map<LocalDate, Integer> grievanceByDateMap = new TreeMap<LocalDate, Integer>();
 		Map<String, Integer> grievanceByDeparmentMap = new TreeMap<String, Integer>();
 		Map<String, Integer> grievanceByStatusMap = new TreeMap<String, Integer>();
-		
-		for (Object[] data: reportsData) {
+		List<NameValue> grievanceByStatusList = new ArrayList<NameValue>();
+		int overAllCount = 0;
+		initializeGrievanceCount(dto);
+
+		for (Object[] data: dashboardData) {
 
 			LocalDate date = LocalDate.parse(data[0].toString(),formatter);
-			int dateCount = Integer.parseInt(data[1].toString());
+			Integer dateCount = Integer.parseInt(data[1].toString());
 			String grievanceType = data[2].toString();
 			String grievanceStatus = data[3].toString();
-
+			overAllCount += dateCount;
 			if(!grievanceByDateMap.containsKey(date)) {
 				grievanceByDateMap.put(date, dateCount);
 			} else {
@@ -149,102 +240,42 @@ public class GrievanceService {
 				grievanceByStatusMap.put(grievanceStatus, updatedCount);
 			}
 			
-			List<NameValue>  grievanceByDateList = grievanceByDateMap.entrySet()
-				    .stream()
-				    .map(entry -> new NameValue(entry.getKey().toString(), entry.getValue().toString()))
-				    .toList(); 
-			
+		}
+		
+		List<NameValue>  grievanceByDateList = grievanceByDateMap.entrySet()
+			    .stream()
+			    .map(entry -> new NameValue(entry.getKey().toString(), entry.getValue().toString()))
+			    .toList(); 
+		
+		
+		List<NameValue>  grievanceByDeparmentList = grievanceByDeparmentMap.entrySet()
+			    .stream()
+			    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
+			    .toList(); 
+		
+		
+		grievanceByStatusList = grievanceByStatusMap.entrySet()
+			    .stream()
+			    .map(entry -> {
+			        NameValue nameValue = new NameValue(entry.getKey(), entry.getValue().toString());
+			        return nameValue;
+			    })
+			    .toList();
+
+		if(dataInDateRange) {
 			dto.setGrievancesInDateRange(grievanceByDateList);
-			
-			
-			List<NameValue>  grievanceByDeparmentList = grievanceByDeparmentMap.entrySet()
-				    .stream()
-				    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
-				    .toList(); 
-			
 			dto.setGrievancesByDepartmentInDateRange(grievanceByDeparmentList);
-			
-			List<NameValue>  grievanceByStatusList = grievanceByStatusMap.entrySet()
-				    .stream()
-				    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
-				    .toList(); 
-			
-			dto.setGrievancesByStatusInDateRange(grievanceByStatusList);
-			
-		}
-		List<Object[]> overAllData = null;
-		
-		if(role.equals("Grievance Controller")) {
-			overAllData = grievanceRepository.findOverallGrievancesData();
-		} else if(role.equals("Grievance Supervisor") || role.equals("Grievance Officer") ) {
-			overAllData = grievanceRepository.findOverallGrievancesDataByDepartment(user.getDepartment());
-		}
-
-		Map<LocalDate, Integer> overallGrievanceByDateMap = new TreeMap<LocalDate, Integer>();
-		Map<String, Integer> overallGrievanceByDeparmentMap = new TreeMap<String, Integer>();
-		Map<String, Integer> overallGrievanceByStatusMap = new TreeMap<String, Integer>();
-		List<NameValue> grievanceByStatusList = new ArrayList<NameValue>();
-		int overAllCount = 0;
-		
-		for (Object[] data: overAllData) {
-
-			LocalDate date = LocalDate.parse(data[0].toString(),formatter);
-			Integer dateCount = Integer.parseInt(data[1].toString());
-			String grievanceType = data[2].toString();
-			String grievanceStatus = data[3].toString();
-			
-			overAllCount += dateCount;
-						
-			if(!overallGrievanceByDateMap.containsKey(date)) {
-				overallGrievanceByDateMap.put(date, dateCount);
-			} else {
-				int updatedCount = overallGrievanceByDateMap.get(date) + dateCount;
-				overallGrievanceByDateMap.put(date, updatedCount);
-			}
-
-			if(!overallGrievanceByDeparmentMap.containsKey(grievanceType)) {
-				overallGrievanceByDeparmentMap.put(grievanceType, dateCount);
-			} else {
-				int updatedCount = overallGrievanceByDeparmentMap.get(grievanceType) + dateCount;
-				overallGrievanceByDeparmentMap.put(grievanceType, updatedCount);
-			}
-			if(!overallGrievanceByStatusMap.containsKey(grievanceStatus)) {
-				overallGrievanceByStatusMap.put(grievanceStatus, dateCount);
-			} else {
-				int updatedCount = overallGrievanceByStatusMap.get(grievanceStatus) + dateCount;
-				overallGrievanceByStatusMap.put(grievanceStatus, updatedCount);
-			}
-			
-			List<NameValue>  grievanceByDateList = overallGrievanceByDateMap.entrySet()
-				    .stream()
-				    .map(entry -> new NameValue(entry.getKey().toString(), entry.getValue().toString()))
-				    .toList(); 
-			
+			dto.setGrievancesByStatusInDateRange(grievanceByStatusList);			
+		} else {
+			User user = userRepository.findById(userId).get();
 			dto.setOverallGrievancesByDate(grievanceByDateList);
-			
-			
-			List<NameValue>  grievanceByDeparmentList = overallGrievanceByDeparmentMap.entrySet()
-				    .stream()
-				    .map(entry -> new NameValue(entry.getKey(), entry.getValue().toString()))
-				    .toList(); 
-			
 			dto.setOverallGrievancesByDepartments(grievanceByDeparmentList);
-			
-			grievanceByStatusList = overallGrievanceByStatusMap.entrySet()
-				    .stream()
-				    .map(entry -> {
-				        NameValue nameValue = new NameValue(entry.getKey(), entry.getValue().toString());
-				        return nameValue;
-				    })
-				    .toList();
-
-			
 			dto.setOverallGrievancesByStatus(grievanceByStatusList);			
+			dto.setOverAllGrievanceCount(overAllCount);
 		}
-		dto.setOverAllGrievanceCount(overAllCount);
 		setGrievanceCount(dto, grievanceByStatusList);
-		return dto;
 	}
+	
 	private void setGrievanceCount(DashboardDto dto, List<NameValue> grievanceByStatus) {
 		
 		for(NameValue nv: grievanceByStatus) {
